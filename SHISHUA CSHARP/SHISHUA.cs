@@ -16,15 +16,6 @@ namespace SHISHUADotNet {
 	/// pRNG algorithm suitable for generating enormous blocks of data.
 	/// </summary>
 	public class SHISHUA {
-		/// <summary>
-		/// The digits of Phi are used during initialization.
-		/// </summary>
-		private static readonly ulong[] PHI = [
-			0x9E3779B97F4A7C15, 0xF39CC0605CEDC834, 0x1082276BF3A27251, 0xF86C6A11D0C18E95,
-			0x2767F0B153D27B7F, 0x0347045B5BF1827F, 0x01886F0928403002, 0xC1D64BA40F335E36,
-			0xF06AD7AE9717877E, 0x85839D6EFFBD7DC6, 0x64D325D1C5371682, 0xCADD0CCCFDFFBBE1,
-			0x626E33B8D04B4331, 0xBBF73C790D94F79D, 0x471C4AB3ED3D82A5, 0xFEC507705E4AE6E5
-		];
 
 		/// <summary>
 		/// Generates an amount of bytes using the provided state.
@@ -56,8 +47,6 @@ namespace SHISHUADotNet {
 			Vector256<ulong> u2 = default;
 			Vector256<ulong> u3 = default;
 
-			Vector256<int> shu0 = Vector256.Create(5, 6, 7, 0, 1, 2, 3, 4);
-			Vector256<int> shu1 = Vector256.Create(3, 4, 5, 6, 7, 0, 1, 2);
 			Vector256<ulong> increment = Vector256.Create(7UL, 5UL, 3UL, 1UL);
 
 			for (int i = 0; i < generationSize; i += 128) {
@@ -80,10 +69,26 @@ namespace SHISHUADotNet {
 				u1 = s1 >>> 3;
 				u2 = s2 >>> 1;
 				u3 = s3 >>> 3;
-				t0 = Vector256.Shuffle(s0.AsInt32(), shu0).AsUInt64();
-				t1 = Vector256.Shuffle(s1.AsInt32(), shu1).AsUInt64();
-				t2 = Vector256.Shuffle(s2.AsInt32(), shu0).AsUInt64();
-				t3 = Vector256.Shuffle(s3.AsInt32(), shu1).AsUInt64();
+
+				// NO NO NO NO NO!
+				// Do NOT!
+				// Vector256<int> shu0 = Vector256.Create(5, 6, 7, 0, 1, 2, 3, 4);
+				// Vector256<int> shu1 = Vector256.Create(3, 4, 5, 6, 7, 0, 1, 2);
+
+				// Reason: Storing this in a local variable causes JIT to get *really* defensive about the code, assuming the worst
+				// (aka "this value might change"). This causes it to generate assembly that manually performs the permutation using
+				// scalar code, because ordinarily the expected AVX2 vpermd instruction requires the permutation operator to be a
+				// constant (like, an instruction operator). For obvious reasons, a local variable that may or may not change isn't
+				// a constant that can be put into the bytecode.
+
+				// For this reason, you *must* put the parameter into the method call directly. This tells JIT that we have
+				// no intent of changing the value ever, and so it can emit the properly optimized vpermd instruction on
+				// hardware that supports AVX2.
+
+				t0 = Vector256.Shuffle(s0.AsInt32(), Vector256.Create(5, 6, 7, 0, 1, 2, 3, 4)).AsUInt64();
+				t1 = Vector256.Shuffle(s1.AsInt32(), Vector256.Create(3, 4, 5, 6, 7, 0, 1, 2)).AsUInt64();
+				t2 = Vector256.Shuffle(s2.AsInt32(), Vector256.Create(5, 6, 7, 0, 1, 2, 3, 4)).AsUInt64();
+				t3 = Vector256.Shuffle(s3.AsInt32(), Vector256.Create(3, 4, 5, 6, 7, 0, 1, 2)).AsUInt64();
 
 				s0 = t0 + u0;
 				s1 = t1 + u1;
@@ -118,10 +123,26 @@ namespace SHISHUADotNet {
 			const int ROUNDS = 13;
 
 			PrngState state = default;
+			/*
 			state.state0 = Vector256.Create(PHI[00] ^ seed0, PHI[01], PHI[02] ^ seed1, PHI[03]);
 			state.state1 = Vector256.Create(PHI[04] ^ seed2, PHI[05], PHI[06] ^ seed3, PHI[07]);
 			state.state2 = Vector256.Create(PHI[08] ^ seed2, PHI[09], PHI[10] ^ seed3, PHI[11]);
 			state.state3 = Vector256.Create(PHI[12] ^ seed0, PHI[13], PHI[14] ^ seed1, PHI[15]);
+
+			private static readonly ulong[] PHI = [
+				0x9E3779B97F4A7C15, 0xF39CC0605CEDC834, 0x1082276BF3A27251, 0xF86C6A11D0C18E95,
+				0x2767F0B153D27B7F, 0x0347045B5BF1827F, 0x01886F0928403002, 0xC1D64BA40F335E36,
+				0xF06AD7AE9717877E, 0x85839D6EFFBD7DC6, 0x64D325D1C5371682, 0xCADD0CCCFDFFBBE1,
+				0x626E33B8D04B4331, 0xBBF73C790D94F79D, 0x471C4AB3ED3D82A5, 0xFEC507705E4AE6E5
+			];
+			*/
+
+			// Put these into source. Yes magic number bad.
+			// But also it wastes time in a particularly performance-sensitive piece of code.
+			state.state0 = Vector256.Create(0x9E3779B97F4A7C15 ^ seed0, 0xF39CC0605CEDC834, 0x1082276BF3A27251 ^ seed1, 0xF86C6A11D0C18E95);
+			state.state1 = Vector256.Create(0x2767F0B153D27B7F ^ seed2, 0x0347045B5BF1827F, 0x01886F0928403002 ^ seed3, 0xC1D64BA40F335E36);
+			state.state2 = Vector256.Create(0xF06AD7AE9717877E ^ seed2, 0x85839D6EFFBD7DC6, 0x64D325D1C5371682 ^ seed3, 0xCADD0CCCFDFFBBE1);
+			state.state3 = Vector256.Create(0x626E33B8D04B4331 ^ seed0, 0xBBF73C790D94F79D, 0x471C4AB3ED3D82A5 ^ seed1, 0xFEC507705E4AE6E5);
 			for (int i = 0; i < ROUNDS; i++) {
 				Generate(ref state, null, 128 * STEPS);
 				state.state0 = state.output3; 
@@ -131,7 +152,6 @@ namespace SHISHUADotNet {
 			}
 			return state;
 		}
-
 		/// <summary>
 		/// The pRNG state stores all values needed to iterate. This state is opaque to prevent
 		/// compromising the randomizer.
@@ -150,6 +170,5 @@ namespace SHISHUADotNet {
 			internal Vector256<ulong> counter;
 		}
 	}
-
 
 }

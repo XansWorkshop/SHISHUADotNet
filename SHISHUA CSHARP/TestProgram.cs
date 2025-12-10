@@ -14,39 +14,34 @@ namespace SHISHUADotNet {
 			}
 			Console.WriteLine();
 		}
-		
-		public static void Main() {
-			Span<byte> result = stackalloc byte[256];
+
+		private static void SpeedTestOutput() {
+			const ulong iterations = 10000000;
+			const int size = 4096;
+			const ulong bytes = iterations * size;
+
+			Span<byte> buf = null;//stackalloc byte[size];
 			SHISHUA.PrngState state = SHISHUA.Initialize(0xDEADBEEF, 0x69420, 0x123456789101112, 0x13371337);
 			SHISHUAHalf.PrngState stateHalf = SHISHUAHalf.Initialize(0xDEADBEEF, 0x69420, 0x123456789101112, 0x13371337);
 
-			SHISHUA.Generate(ref state, result, 256);
-			WriteByteArray(result);
-			Console.WriteLine();
-			SHISHUAHalf.Generate(ref stateHalf, result, 256);
-			WriteByteArray(result);
+			Stopwatch sw = new Stopwatch();
+			sw.Start();
+			for (ulong i = 0; i < iterations; i++) {
+				SHISHUA.Generate(ref state, buf, size);
+			}
+			sw.Stop();
+			Console.WriteLine($"Generated {bytes} bytes of data in {sw.ElapsedTicks * 100.0D} nanos, or {sw.ElapsedMilliseconds / 1000.0D} seconds");
 
-			/*
-			ProcessStartInfo rngTest = new ProcessStartInfo(
-				"RNG_test.exe",
-				"stdin -a -multithreaded -tlfail"
-			) {
-				RedirectStandardInput = true,
-			};
+			sw.Restart();
+			for (ulong i = 0; i < iterations; i++) {
+				SHISHUAHalf.Generate(ref stateHalf, buf, size);
+			}
+			sw.Stop();
+			Console.WriteLine($"Generated {bytes} bytes of data in {sw.ElapsedTicks * 100.0D} nanos, or {sw.ElapsedMilliseconds / 1000.0D} seconds");
+		}
 
-			try {
-				Process? rng = Process.Start(rngTest);
-				if (rng != null) {
-					ulong remainingBytes = 1099511627776;
-					using BinaryWriter writer = new BinaryWriter(rng.StandardInput.BaseStream);
-					while (remainingBytes > 0) {
-						SHISHUA.Generate(ref state, result, 16384);
-						remainingBytes -= 16384;
-						writer.Write(result);
-					}
-				}
-			} catch { }
-			*/
+		public static void Main() {
+			SpeedTestOutput();
 		}
 	}
 }

@@ -11,19 +11,13 @@ namespace SHISHUADotNet {
 	/// An implementation of the <see href="https://github.com/espadrine/shishua">SHISHUA</see> pRNG algorithm, an extremely fast and resilient
 	/// pRNG algorithm suitable for generating enormous blocks of data.
 	/// <para/>
-	/// This is the "half-size" implementation. It is simpler than its full-size counterpart, exporting blocks of 64 bytes instead of the 128.
+	/// This is the "half-size" implementation. It is simpler than its full-size counterpart, exporting blocks of 64 bytes instead of the 128,
+	/// but in exchange it also runs at half speed.
 	/// </summary>
 	/// <remarks>
 	/// This is not necessarily a drop-in replacement for <see cref="SHISHUA"/> as it will generate different data.
 	/// </remarks>
 	public class SHISHUAHalf {
-		/// <summary>
-		/// The digits of Phi are used during initialization.
-		/// </summary>
-		private static readonly ulong[] PHI = [
-			0x9E3779B97F4A7C15, 0xF39CC0605CEDC834, 0x1082276BF3A27251, 0xF86C6A11D0C18E95,
-			0x2767F0B153D27B7F, 0x0347045B5BF1827F, 0x01886F0928403002, 0xC1D64BA40F335E36
-		];
 
 		/// <summary>
 		/// Generates an amount of bytes using the provided state.
@@ -46,8 +40,6 @@ namespace SHISHUADotNet {
 			Vector256<ulong> u0 = default;
 			Vector256<ulong> u1 = default;
 
-			Vector256<int> shu0 = Vector256.Create(5, 6, 7, 0, 1, 2, 3, 4);
-			Vector256<int> shu1 = Vector256.Create(3, 4, 5, 6, 7, 0, 1, 2);
 			Vector256<ulong> increment = Vector256.Create(7UL, 5UL, 3UL, 1UL);
 
 			for (int i = 0; i < generationSize; i += 32) {
@@ -64,8 +56,13 @@ namespace SHISHUADotNet {
 
 				u0 = s0 >>> 1;
 				u1 = s1 >>> 3;
-				t0 = Vector256.Shuffle(s0.AsInt32(), shu0).AsUInt64();
-				t1 = Vector256.Shuffle(s1.AsInt32(), shu1).AsUInt64();
+
+				// I won't scream at you again, but if you wonder why the operator is created every time here,
+				// it has to be. See equivalent code block in the full version of the class for an explanation
+				// (tl;dr JIT panics if it's a local and generates abysmally awful code out of caution, instead
+				// of emitting a single instruction).
+				t0 = Vector256.Shuffle(s0.AsInt32(), Vector256.Create(5, 6, 7, 0, 1, 2, 3, 4)).AsUInt64();
+				t1 = Vector256.Shuffle(s1.AsInt32(), Vector256.Create(3, 4, 5, 6, 7, 0, 1, 2)).AsUInt64();
 
 				s0 = t0 + u0;
 				s1 = t1 + u1;
@@ -90,8 +87,17 @@ namespace SHISHUADotNet {
 			const int ROUNDS = 4;
 
 			PrngState state = default;
+			/*
+			private static readonly ulong[] PHI = [
+				0x9E3779B97F4A7C15, 0xF39CC0605CEDC834, 0x1082276BF3A27251, 0xF86C6A11D0C18E95,
+				0x2767F0B153D27B7F, 0x0347045B5BF1827F, 0x01886F0928403002, 0xC1D64BA40F335E36
+			];
 			state.state0 = Vector256.Create(PHI[00] ^ seed0, PHI[01], PHI[02] ^ seed1, PHI[03]);
 			state.state1 = Vector256.Create(PHI[04] ^ seed2, PHI[05], PHI[06] ^ seed3, PHI[07]);
+			*/
+
+			state.state0 = Vector256.Create(0x9E3779B97F4A7C15 ^ seed0, 0xF39CC0605CEDC834, 0x1082276BF3A27251 ^ seed1, 0xF86C6A11D0C18E95);
+			state.state1 = Vector256.Create(0x2767F0B153D27B7F ^ seed2, 0x0347045B5BF1827F, 0x01886F0928403002 ^ seed3, 0xC1D64BA40F335E36);
 			for (int i = 0; i < ROUNDS; i++) {
 				Generate(ref state, null, 32 * STEPS);
 				state.state0 = state.state1;
