@@ -16,9 +16,17 @@ namespace SHISHUADotNet {
 		}
 		
 		public static void Main() {
-			Span<byte> result = stackalloc byte[16384];
+			Span<byte> result = stackalloc byte[256];
 			SHISHUA.PrngState state = SHISHUA.Initialize(0xDEADBEEF, 0x69420, 0x123456789101112, 0x13371337);
+			SHISHUAHalf.PrngState stateHalf = SHISHUAHalf.Initialize(0xDEADBEEF, 0x69420, 0x123456789101112, 0x13371337);
 
+			SHISHUA.Generate(ref state, result, 256);
+			WriteByteArray(result);
+			Console.WriteLine();
+			SHISHUAHalf.Generate(ref stateHalf, result, 256);
+			WriteByteArray(result);
+
+			/*
 			ProcessStartInfo rngTest = new ProcessStartInfo(
 				"RNG_test.exe",
 				"stdin -a -multithreaded -tlfail"
@@ -38,6 +46,7 @@ namespace SHISHUADotNet {
 					}
 				}
 			} catch { }
+			*/
 		}
 	}
 }
