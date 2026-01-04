@@ -43,12 +43,8 @@ namespace SHISHUADotNet {
 			Vector256<ulong> increment = Vector256.Create(7UL, 5UL, 3UL, 1UL);
 
 			for (int i = 0; i < generationSize; i += 32) {
-				if (!resultBuffer.IsEmpty) {
-					unsafe {
-						fixed (byte* bufPtr = resultBuffer) {
-							o.Store((ulong*)&bufPtr[i]);
-						}
-					}
+				if (resultBuffer.Length - i >= 32) {
+					o.AsByte().CopyTo(resultBuffer.Slice(i, 32));
 				}
 
 				s1 += counter;
