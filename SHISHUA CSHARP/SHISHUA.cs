@@ -50,15 +50,12 @@ namespace SHISHUADotNet {
 			Vector256<ulong> increment = Vector256.Create(7UL, 5UL, 3UL, 1UL);
 
 			for (int i = 0; i < generationSize; i += 128) {
-				if (!resultBuffer.IsEmpty) {
-					unsafe {
-						fixed (byte* bufPtr = resultBuffer) {
-							o0.Store((ulong*)&bufPtr[i + 00]);
-							o1.Store((ulong*)&bufPtr[i + 32]);
-							o2.Store((ulong*)&bufPtr[i + 64]);
-							o3.Store((ulong*)&bufPtr[i + 96]);
-						}
-					}
+				if (resultBuffer.Length - i >= 128) {
+					Span<byte> blockSpan = resultBuffer.Slice(i, 128);
+					o0.AsByte().CopyTo(blockSpan.Slice(00, 32));
+					o1.AsByte().CopyTo(blockSpan.Slice(32, 32));
+					o2.AsByte().CopyTo(blockSpan.Slice(64, 32));
+					o3.AsByte().CopyTo(blockSpan.Slice(96, 32));
 				}
 
 				s1 += counter;
