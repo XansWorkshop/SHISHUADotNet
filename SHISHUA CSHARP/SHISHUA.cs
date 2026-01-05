@@ -67,25 +67,10 @@ namespace SHISHUADotNet {
 				u2 = s2 >>> 1;
 				u3 = s3 >>> 3;
 
-				// NO NO NO NO NO!
-				// Do NOT!
-				// Vector256<int> shu0 = Vector256.Create(5, 6, 7, 0, 1, 2, 3, 4);
-				// Vector256<int> shu1 = Vector256.Create(3, 4, 5, 6, 7, 0, 1, 2);
-
-				// Reason: Storing this in a local variable causes JIT to get *really* defensive about the code, assuming the worst
-				// (aka "this value might change"). This causes it to generate assembly that manually performs the permutation using
-				// scalar code, because ordinarily the expected AVX2 vpermd instruction requires the permutation operator to be a
-				// constant (like, an instruction operator). For obvious reasons, a local variable that may or may not change isn't
-				// a constant that can be put into the bytecode.
-
-				// For this reason, you *must* put the parameter into the method call directly. This tells JIT that we have
-				// no intent of changing the value ever, and so it can emit the properly optimized vpermd instruction on
-				// hardware that supports AVX2.
-
-				t0 = Vector256.Shuffle(s0.AsInt32(), Vector256.Create(5, 6, 7, 0, 1, 2, 3, 4)).AsUInt64();
-				t1 = Vector256.Shuffle(s1.AsInt32(), Vector256.Create(3, 4, 5, 6, 7, 0, 1, 2)).AsUInt64();
-				t2 = Vector256.Shuffle(s2.AsInt32(), Vector256.Create(5, 6, 7, 0, 1, 2, 3, 4)).AsUInt64();
-				t3 = Vector256.Shuffle(s3.AsInt32(), Vector256.Create(3, 4, 5, 6, 7, 0, 1, 2)).AsUInt64();
+				t0 = V256Helper.Extract20(s0.AsByte()).AsUInt64();
+				t1 = V256Helper.Extract12(s1.AsByte()).AsUInt64();
+				t2 = V256Helper.Extract20(s2.AsByte()).AsUInt64();
+				t3 = V256Helper.Extract12(s3.AsByte()).AsUInt64();
 
 				s0 = t0 + u0;
 				s1 = t1 + u1;

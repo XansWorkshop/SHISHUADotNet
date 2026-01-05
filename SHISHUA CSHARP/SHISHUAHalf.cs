@@ -53,12 +53,8 @@ namespace SHISHUADotNet {
 				u0 = s0 >>> 1;
 				u1 = s1 >>> 3;
 
-				// I won't scream at you again, but if you wonder why the operator is created every time here,
-				// it has to be. See equivalent code block in the full version of the class for an explanation
-				// (tl;dr JIT panics if it's a local and generates abysmally awful code out of caution, instead
-				// of emitting a single instruction).
-				t0 = Vector256.Shuffle(s0.AsInt32(), Vector256.Create(5, 6, 7, 0, 1, 2, 3, 4)).AsUInt64();
-				t1 = Vector256.Shuffle(s1.AsInt32(), Vector256.Create(3, 4, 5, 6, 7, 0, 1, 2)).AsUInt64();
+				t0 = V256Helper.Extract20(s0.AsByte()).AsUInt64();
+				t1 = V256Helper.Extract12(s1.AsByte()).AsUInt64();
 
 				s0 = t0 + u0;
 				s1 = t1 + u1;
