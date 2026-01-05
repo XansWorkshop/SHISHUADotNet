@@ -24,6 +24,7 @@ namespace SHISHUADotNet {
 		/// <param name="resultBuffer">The output buffer to store generated random bytes into. Can be <see langword="null"/> to skip storing data and advance the state anyway.</param>
 		/// <param name="generationSize">The amount of bytes to generate. If the <paramref name="resultBuffer"/> is not <see langword="null"/> (or, empty), this must be greater than or equal to its size. Must be divisible by 32.</param>
 		/// <exception cref="ArgumentException">The <paramref name="resultBuffer"/> is not empty, but has a length less than <paramref name="generationSize"/>, or the <paramref name="generationSize"/> is not divisible by 32.</exception>
+		/// <exception cref="PlatformNotSupportedException">The current hardware is not able to perform all of the operations necessary to leverage this randomizer.</exception>
 		[MethodImpl(MethodImplOptions.AggressiveOptimization)]
 		public static void Generate(ref PrngState state, Span<byte> resultBuffer, int generationSize) {
 			if (!resultBuffer.IsEmpty) {
